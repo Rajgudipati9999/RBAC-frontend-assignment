@@ -1,13 +1,15 @@
 import { useState } from "react";
-import API from "../../services/api";
+import { useNavigate, Link } from "react-router-dom";
+import { apiFetch } from "../../services/api";
 import "./index.css";
 
-function Register({ onSwitchToLogin }) {
+function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,12 +17,19 @@ function Register({ onSwitchToLogin }) {
     setMessage("");
     setLoading(true);
     try {
-      const res = await API.post("/auth/register", { email, password });
-      setMessage(res.data.message || "Registration successful");
+      const data = await apiFetch("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+
+      setMessage(data?.message || "Registration successful");
       setEmail("");
       setPassword("");
+      // After successful registration, send user to Login
+      navigate("/login", { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed");
+      const message = err.body?.message || err.message || "Registration failed";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -59,9 +68,9 @@ function Register({ onSwitchToLogin }) {
         </button>
         <p className="auth-switch">
           Already have an account?{" "}
-          <button type="button" className="link-btn" onClick={onSwitchToLogin}>
+          <Link to="/login" className="link-btn">
             Login
-          </button>
+          </Link>
         </p>
       </form>
     </div>

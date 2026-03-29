@@ -2,6 +2,17 @@ import { useEffect, useState } from "react";
 import * as taskService from "../../services/taskService";
 import "./index.css";
 
+// Try to infer the owner id from different possible backend field names
+function getTaskOwnerId(task) {
+  return (
+    task.ownerId ||
+    task.userId ||
+    (task.user && (task.user._id || task.user.id)) ||
+    task.owner ||
+    null
+  );
+}
+
 function Dashboard({ onLogout }) {
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState("");
@@ -9,19 +20,23 @@ function Dashboard({ onLogout }) {
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [role, setRole] = useState(null);
+  const [userId, setUserId] = useState(null);
+  console.log(tasks);
 
   const loadTasks = async () => {
     setError("");
     try {
       const list = await taskService.getAllTasks();
       setTasks(list);
+      console.log(list)
     } catch (err) {
-      if (err.response?.status === 401) {
+      if (err.status === 401) {
         localStorage.removeItem("token");
         onLogout();
         return;
       }
-      setError(err.response?.data?.message || "Failed to load tasks");
+      setError(err.body?.message || err.message || "Failed to load tasks");
       setTasks([]);
     } finally {
       setLoading(false);
@@ -29,6 +44,8 @@ function Dashboard({ onLogout }) {
   };
 
   useEffect(() => {
+    setRole(localStorage.getItem("role"));
+    setUserId(localStorage.getItem("userId"));
     loadTasks();
   }, [loadTasks]);
 
@@ -41,7 +58,7 @@ function Dashboard({ onLogout }) {
       setTitle("");
       loadTasks();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to create task");
+      setError(err.body?.message || err.message || "Failed to create task");
     }
   };
 
@@ -54,7 +71,7 @@ function Dashboard({ onLogout }) {
       setEditingTitle("");
       loadTasks();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update task");
+      setError(err.body?.message || err.message || "Failed to update task");
     }
   };
 
@@ -64,7 +81,7 @@ function Dashboard({ onLogout }) {
       await taskService.deleteTask(id);
       loadTasks();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete task");
+      setError(err.body?.message || err.message || "Failed to delete task");
     }
   };
 
@@ -82,6 +99,7 @@ function Dashboard({ onLogout }) {
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>Tasks</h1>
+        {role && <span className="dashboard-role">Role: {role}</span>}
         <button type="button" className="btn-logout" onClick={onLogout}>
           Logout
         </button>
@@ -108,9 +126,14 @@ function Dashboard({ onLogout }) {
         <p className="dashboard-loading">Loading tasks…</p>
       ) : (
         <ul className="task-list">
-          {tasks.map((task) => (
-            <li key={task._id} className="task-item">
-              {editingId === task._id ? (
+          {tasks.map((task) => {
+            const ownerId = getTaskOwnerId(task);
+            const isOwner = userId && ownerId && String(ownerId) === String(userId);
+            const canDelete = role === "admin" || isOwner;
+
+            return (
+              <li key={task._id} className="task-item">
+                {editingId === task._id ? (
                 <div className="task-edit">
                   <input
                     type="text"
@@ -130,29 +153,36 @@ function Dashboard({ onLogout }) {
                     Cancel
                   </button>
                 </div>
-              ) : (
-                <>
-                  <span className="task-title">{task.title}</span>
-                  <div className="task-actions">
-                    <button
-                      type="button"
-                      className="btn-edit"
-                      onClick={() => startEdit(task)}
-                    >
-                      Update
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-delete"
-                      onClick={() => deleteTask(task._id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </>
-              )}
-            </li>
-          ))}
+                ) : (
+                  <>
+                    <span className="task-title">{task.title}</span>
+                    <div className="task-actions">
+                      <button
+                        type="button"
+                        className="btn-edit"
+                        onClick={() => startEdit(task)}
+                      >
+                        Update
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-delete"
+                        disabled={!canDelete}
+                        title={
+                          canDelete
+                            ? "Delete task"
+                            : "Only admins or task owners can delete"
+                        }
+                        onClick={() => canDelete && deleteTask(task._id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 

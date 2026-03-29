@@ -1,14 +1,12 @@
-import API from "./api";
+import { apiFetch } from "./api";
 
 /**
- * Fetch all tasks. Uses JWT from localStorage via API interceptor.
+ * Fetch all tasks. Uses JWT from localStorage via Authorization header.
  * @returns {Promise<Array>} List of tasks
  */
-
 export async function getAllTasks() {
-  const res = await API.get("/tasks");
-  const data = res.data;
-  return Array.isArray(data) ? data : (data?.tasks || []);
+  const data = await apiFetch("/tasks");
+  return Array.isArray(data) ? data : data?.tasks || [];
 }
 
 /**
@@ -16,10 +14,11 @@ export async function getAllTasks() {
  * @param {string} title - Task title
  * @returns {Promise<Object>} Created task from API
  */
-
 export async function createTask(title) {
-  const res = await API.post("/tasks", { title: title.trim() });
-  return res.data;
+  return apiFetch("/tasks", {
+    method: "POST",
+    body: JSON.stringify({ title: title.trim() }),
+  });
 }
 
 /**
@@ -28,10 +27,11 @@ export async function createTask(title) {
  * @param {string} title - New title
  * @returns {Promise<Object>} Updated task from API
  */
-
 export async function updateTask(id, title) {
-  const res = await API.patch(`/tasks/${id}`, { title: title.trim() });
-  return res.data;
+  return apiFetch(`/tasks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ title: title.trim() }),
+  });
 }
 
 /**
@@ -39,7 +39,8 @@ export async function updateTask(id, title) {
  * @param {string} id - Task _id
  * @returns {Promise<void>}
  */
-
 export async function deleteTask(id) {
-  await API.delete(`/tasks/${id}`);
+  await apiFetch(`/tasks/${id}`, {
+    method: "DELETE",
+  });
 }

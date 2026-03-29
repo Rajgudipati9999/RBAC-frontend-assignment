@@ -1,14 +1,16 @@
 import { useState } from "react";
-import API from "../../services/api";
+import { useNavigate, Link } from "react-router-dom";
+import { apiFetch } from "../../services/api";
 import "./index.css";
 
-function Login({ onLogin, onSwitchToRegister }) {
+function Login({ onLogin }) {
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -18,15 +20,30 @@ function Login({ onLogin, onSwitchToRegister }) {
     setError("");
     setLoading(true);
     try {
-      const res = await API.post("/auth/login", form);
-      const jwt = res.data.token;
-      console.log(res.status)
-      if(res.status === 200){
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      const jwt = data?.token;
+      const role = data?.role || data?.user?.role;
+      const userId = data?.user?._id || data?.user?.id || data?.id;
+
+      if (jwt) {
         localStorage.setItem("token", jwt);
+        if (role) {
+          localStorage.setItem("role", role);
+        }
+        if (userId) {
+          localStorage.setItem("userId", String(userId));
+        }
         onLogin(jwt);
+        navigate("/dashboard", { replace: true });
+      } else {
+        setError("No token received from server");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid credentials");
+      const message = err.body?.message || err.message || "Invalid credentials";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -66,9 +83,9 @@ function Login({ onLogin, onSwitchToRegister }) {
         </button>
         <p className="auth-switch">
           Don&apos;t have an account?{" "}
-          <button type="button" className="link-btn" onClick={onSwitchToRegister}>
+          <Link to="/register" className="link-btn">
             Sign up
-          </button>
+          </Link>
         </p>
       </form>
     </div>
