@@ -47,7 +47,7 @@ function Dashboard({ onLogout }) {
     setRole(localStorage.getItem("role"));
     setUserId(localStorage.getItem("userId"));
     loadTasks();
-  }, [loadTasks]);
+  }, []);
 
   const createTask = async (e) => {
     e?.preventDefault();
