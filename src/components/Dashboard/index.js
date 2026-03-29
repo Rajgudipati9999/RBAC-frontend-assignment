@@ -30,7 +30,7 @@ function Dashboard({ onLogout }) {
 
   useEffect(() => {
     loadTasks();
-  }, []);
+  }, [loadTasks]);
 
   const createTask = async (e) => {
     e?.preventDefault();
